@@ -15,8 +15,6 @@ const statusEl = document.getElementById("status");
 const resultsEl = document.getElementById("results");
 const placeholderEl = document.getElementById("placeholder");
 
-const preprocessCanvas = document.createElement("canvas");
-
 let model = null;
 let classNames = [];
 let stream = null;
@@ -24,6 +22,7 @@ let facingMode = "environment";
 let modelReady = false;
 let cameraReady = false;
 let busy = false;
+let firstInference = true;
 
 function setStatus(text) {
   statusEl.textContent = text;
@@ -77,18 +76,6 @@ function getSourceSize(source) {
   return { sw, sh };
 }
 
-function drawToCanvas(source, canvas) {
-  const ctx = canvas.getContext("2d");
-  const { sw, sh } = getSourceSize(source);
-  if (!sw || !sh) return false;
-  canvas.width = sw;
-  canvas.height = sh;
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(source, 0, 0, sw, sh);
-  return true;
-}
-
 function drawToSquare(source, canvas) {
   const ctx = canvas.getContext("2d");
   const { sw, sh } = getSourceSize(source);
@@ -128,18 +115,49 @@ function makeInputTensor(canvas) {
   return tf.tensor4d(input, [1, height, width, 3], "float32");
 }
 
+function shortenLabel(name, mode) {
+  const firstIdx = name.indexOf("__");
+  if (firstIdx === -1) return name;
+  const firstLetter = name.charAt(0);
+  if (mode === 1) return firstLetter + name.slice(firstIdx);
+  const secondIdx = name.indexOf("__", firstIdx + 2);
+  if (secondIdx === -1) return firstLetter + name.slice(firstIdx);
+  return firstLetter + name.slice(secondIdx);
+}
+
+function fitLabel(labelEl) {
+  const full = labelEl.dataset.full || labelEl.textContent;
+  labelEl.textContent = full;
+  if (labelEl.scrollWidth <= labelEl.clientWidth) return;
+  labelEl.textContent = shortenLabel(full, 1);
+  if (labelEl.scrollWidth <= labelEl.clientWidth) return;
+  labelEl.textContent = shortenLabel(full, 2);
+}
+
+function fitLabels() {
+  resultsEl.querySelectorAll("[data-full]").forEach(fitLabel);
+}
+
 function renderResults(items) {
   resultsEl.innerHTML = "";
   items.forEach((item) => {
     const li = document.createElement("li");
     li.className =
       "flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white/70 px-3 py-2";
-    li.innerHTML = `
-      <span class="truncate">${item.name}</span>
-      <span class="text-xs font-semibold text-slate-600">${(item.prob * 100).toFixed(2)}%</span>
-    `;
+    const label = document.createElement("span");
+    label.className = "truncate";
+    label.textContent = item.name;
+    label.dataset.full = item.name;
+    label.title = item.name;
+
+    const prob = document.createElement("span");
+    prob.className = "text-xs font-semibold text-slate-600";
+    prob.textContent = `${(item.prob * 100).toFixed(2)}%`;
+
+    li.append(label, prob);
     resultsEl.appendChild(li);
   });
+  requestAnimationFrame(fitLabels);
 }
 
 async function loadModelAndClasses() {
@@ -204,9 +222,8 @@ async function classifySource(source) {
   clearResults();
   setStatus("Capturing...");
 
-  const drawn = drawToCanvas(source, captureCanvas);
-  const prepped = drawToSquare(source, preprocessCanvas);
-  if (!drawn || !prepped) {
+  const prepped = drawToSquare(source, captureCanvas);
+  if (!prepped) {
     setStatus("Capture failed.");
     busy = false;
     updateButtons();
@@ -217,14 +234,28 @@ async function classifySource(source) {
   setStatus("Running inference...");
 
   try {
-    const output = tf.tidy(() => {
-      const input = makeInputTensor(preprocessCanvas);
-      const result = model.predict(input);
-      return Array.isArray(result) ? result[0] : result;
-    });
+    const runInference = async () => {
+      const output = tf.tidy(() => {
+        const input = makeInputTensor(captureCanvas);
+        const result = model.predict(input);
+        return Array.isArray(result) ? result[0] : result;
+      });
+      const probs = await output.data();
+      output.dispose();
+      return probs;
+    };
 
-    const probs = await output.data();
-    output.dispose();
+    let probs = await runInference();
+    let sum = 0;
+    for (let i = 0; i < probs.length; i += 1) {
+      sum += probs[i];
+    }
+    if (firstInference && sum < 1e-6) {
+      firstInference = false;
+      probs = await runInference();
+    } else {
+      firstInference = false;
+    }
 
     const items = Array.from(probs).map((prob, index) => ({
       name: classNames[index] || `Class ${index}`,
