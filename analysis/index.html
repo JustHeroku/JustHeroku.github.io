@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Run Analysis</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Work+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="topbar">
+        <div class="title-block">
+          <p class="kicker">Model diagnostics</p>
+          <h1>Run Analysis Explorer</h1>
+          <p class="subtitle">
+            Compare training curves and validation errors across runs, with
+            class-level breakdowns and confusion views.
+          </p>
+        </div>
+        <div class="run-select">
+          <button id="run-button" class="run-button" type="button">
+            <span class="run-label">Run</span>
+            <span id="current-run" class="run-name">loading</span>
+            <span class="caret">v</span>
+          </button>
+          <div id="run-menu" class="run-menu hidden"></div>
+        </div>
+      </header>
+
+      <div class="tabs" role="tablist">
+        <button class="tab-button active" data-tab="history" role="tab">
+          History
+        </button>
+        <button class="tab-button" data-tab="per-class" role="tab">
+          Class Accuracy
+        </button>
+        <button class="tab-button" data-tab="matrix" role="tab">
+          Confusion Matrix
+        </button>
+        <button class="tab-button" data-tab="graph" role="tab">
+          Confusion Graph
+        </button>
+      </div>
+
+      <div id="filter-row" class="filter-row hidden">
+        <label for="accuracy-filter" class="filter-label">
+          Show classes with accuracy <= <span id="filter-value">100</span>%
+        </label>
+        <input
+          id="accuracy-filter"
+          class="filter-slider"
+          type="range"
+          min="0"
+          max="100"
+          step="1"
+          value="100"
+        />
+      </div>
+
+      <div id="graph-filter-row" class="filter-row hidden">
+        <label for="graph-filter" class="filter-label">
+          Show classes with max confusion count >=
+          <span id="graph-filter-value">0</span>
+        </label>
+        <input
+          id="graph-filter"
+          class="filter-slider"
+          type="range"
+          min="0"
+          max="10"
+          step="1"
+          value="0"
+        />
+        <label class="filter-toggle" for="graph-edge-toggle">
+          <input id="graph-edge-toggle" type="checkbox" />
+          Show all connections
+        </label>
+      </div>
+
+      <section id="tab-history" class="tab-panel active">
+        <div class="panel-card panel-card-tight">
+          <div class="panel-header">
+            <h2>Training history</h2>
+            <span class="panel-meta" id="history-meta">loading</span>
+          </div>
+          <div class="chart-grid">
+            <div class="chart-card">
+              <div class="chart-title">Accuracy</div>
+              <div id="history-accuracy" class="chart-surface"></div>
+            </div>
+            <div class="chart-card">
+              <div class="chart-title">Loss</div>
+              <div id="history-loss" class="chart-surface"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-per-class" class="tab-panel">
+        <div class="panel-card">
+          <div class="panel-header">
+            <h2>Per-class accuracy breakdown</h2>
+            <span class="panel-meta" id="per-class-meta">loading</span>
+          </div>
+          <div id="per-class-chart" class="chart-surface"></div>
+        </div>
+      </section>
+
+      <section id="tab-matrix" class="tab-panel">
+        <div class="panel-card">
+          <div class="panel-header">
+            <h2>Confusion matrix</h2>
+            <span class="panel-meta" id="matrix-meta">loading</span>
+          </div>
+          <div id="confusion-matrix" class="chart-surface scroll-surface"></div>
+        </div>
+      </section>
+
+      <section id="tab-graph" class="tab-panel">
+        <div class="panel-card">
+          <div class="panel-header">
+            <h2>Confusion graph</h2>
+            <span class="panel-meta" id="graph-meta">loading</span>
+          </div>
+          <div id="confusion-graph" class="chart-surface graph-surface"></div>
+        </div>
+      </section>
+    </main>
+
+    <div id="status" class="status">Loading runs...</div>
+    <div id="tooltip" class="tooltip hidden"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
