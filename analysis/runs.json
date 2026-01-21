@@ -1,4 +1,5 @@
 [
   "conv_max_256_final",
-  "conv_max_512_final"
+  "conv_max_512_final",
+  "conv_max_512_final_augmented"
 ]
