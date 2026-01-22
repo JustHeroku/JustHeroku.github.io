@@ -2,6 +2,6 @@
   "conv_max_256_final",
   "conv_max_512_final",
   "conv_max_1024_final",
-  "conv_max_512_from_1024_sd",
-  "conv_max_256_from_1024_sd"
+  "basic_cnn_256_from_1024_distill",
+  "conv_max_512_final_no_pretrained"
 ]
