@@ -221,6 +221,79 @@ h1 {
   padding-bottom: 12px;
 }
 
+.summary-panel {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.summary-stats {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.summary-item {
+  min-width: 180px;
+}
+
+.summary-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.summary-value {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--accent-3);
+}
+
+.summary-sub {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.summary-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex: 1;
+}
+
+.summary-note {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.summary-buttons {
+  display: inline-flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.summary-buttons button {
+  border: 1px solid var(--line);
+  background: #ffffff;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.summary-buttons button:hover {
+  background: var(--panel);
+}
+
 .panel-header {
   display: flex;
   align-items: center;
@@ -347,5 +420,9 @@ h1 {
 
   .panel-card {
     padding: 18px;
+  }
+
+  .summary-actions {
+    align-items: flex-start;
   }
 }

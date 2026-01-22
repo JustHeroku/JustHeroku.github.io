@@ -7,6 +7,7 @@ const state = {
   filterMaxAcc: 100,
   graphMinConfusions: 0,
   graphShowAllEdges: false,
+  selectedClasses: new Set(),
   activeTab: "history",
 };
 
@@ -23,6 +24,13 @@ const elements = {
   graphFilterInput: document.getElementById("graph-filter"),
   graphFilterValue: document.getElementById("graph-filter-value"),
   graphEdgeToggle: document.getElementById("graph-edge-toggle"),
+  avgAll: document.getElementById("avg-all"),
+  avgAllCount: document.getElementById("avg-all-count"),
+  avgSelected: document.getElementById("avg-selected"),
+  selectedCount: document.getElementById("selected-count"),
+  selectVisible: document.getElementById("select-visible"),
+  selectAll: document.getElementById("select-all"),
+  clearSelection: document.getElementById("clear-selection"),
   historyMeta: document.getElementById("history-meta"),
   perClassMeta: document.getElementById("per-class-meta"),
   matrixMeta: document.getElementById("matrix-meta"),
@@ -143,6 +151,52 @@ function filteredClasses() {
   return state.classData.filter((d) => d.acc * 100 <= state.filterMaxAcc + 1e-9);
 }
 
+function computeAverage(indices) {
+  let sum = 0;
+  let count = 0;
+  indices.forEach((idx) => {
+    const item = state.classData[idx];
+    if (item && item.total > 0 && Number.isFinite(item.acc)) {
+      sum += item.acc;
+      count += 1;
+    }
+  });
+  return { avg: count ? sum / count : null, count };
+}
+
+function updatePerClassSummary() {
+  if (!elements.avgAll || !elements.avgSelected) {
+    return;
+  }
+  const allIndices = state.classData.map((d) => d.index);
+  const allStats = computeAverage(allIndices);
+  const selectedIndices = Array.from(state.selectedClasses);
+  const selectedStats = computeAverage(selectedIndices);
+
+  elements.avgAll.textContent =
+    allStats.avg !== null ? `${(allStats.avg * 100).toFixed(2)}%` : "n/a";
+  elements.avgAllCount.textContent = `${allStats.count} classes`;
+
+  elements.avgSelected.textContent =
+    selectedStats.avg !== null ? `${(selectedStats.avg * 100).toFixed(2)}%` : "n/a";
+  elements.selectedCount.textContent = `${selectedIndices.length} selected`;
+}
+
+function toggleSelection(idx) {
+  if (state.selectedClasses.has(idx)) {
+    state.selectedClasses.delete(idx);
+  } else {
+    state.selectedClasses.add(idx);
+  }
+  hideTooltip();
+  renderPerClass();
+}
+
+function setSelection(indices) {
+  state.selectedClasses = new Set(indices);
+  renderPerClass();
+}
+
 function graphCandidateIndices() {
   const cm = state.confusion.matrix;
   if (state.graphMinConfusions <= 0) {
@@ -178,6 +232,7 @@ async function loadRun(runName) {
     state.history = parseHistory(historyText);
     state.confusion = parseConfusion(confusionText);
     state.classData = buildClassData(state.confusion);
+    state.selectedClasses = new Set();
     elements.filterValue.textContent = String(state.filterMaxAcc);
     elements.graphFilterValue.textContent = String(state.graphMinConfusions);
     if (elements.graphEdgeToggle) {
@@ -341,6 +396,8 @@ function renderLineChart(containerId, series, options) {
 }
 
 function renderPerClass() {
+  const scrollX = window.scrollX;
+  const scrollY = window.scrollY;
   const data = filteredClasses();
   const totalClasses = state.classData.length;
   elements.perClassMeta.textContent = `Showing ${data.length} of ${totalClasses} classes`;
@@ -349,6 +406,10 @@ function renderPerClass() {
   container.innerHTML = "";
   if (!data.length) {
     container.textContent = "No classes match this filter.";
+    updatePerClassSummary();
+    requestAnimationFrame(() => {
+      window.scrollTo(scrollX, scrollY);
+    });
     return;
   }
 
@@ -371,21 +432,44 @@ function renderPerClass() {
   const colorScale = d3.scaleSequential(d3.interpolateYlGnBu).domain([0, totalClasses - 1]);
   const lighten = (color) => d3.interpolateRgb(color, "#ffffff")(0.45);
 
-  data.forEach((d, idx) => {
-    const y = margin.top + idx * (barHeight + gap);
-    svg
+  const rowGroup = svg
+    .append("g")
+    .selectAll("g")
+    .data(data)
+    .enter()
+    .append("g")
+    .attr("transform", (d, idx) => `translate(0, ${margin.top + idx * (barHeight + gap)})`)
+    .style("cursor", "pointer")
+    .on("click", (event, d) => {
+      event.preventDefault();
+      toggleSelection(d.index);
+    });
+
+  rowGroup.each(function (d) {
+    const group = d3.select(this);
+    if (state.selectedClasses.has(d.index)) {
+      group
+        .append("rect")
+        .attr("x", 0)
+        .attr("y", -2)
+        .attr("width", width)
+        .attr("height", barHeight + 4)
+        .attr("fill", "rgba(42, 157, 143, 0.12)");
+    }
+
+    group
       .append("text")
       .attr("x", 0)
-      .attr("y", y + barHeight - 2)
+      .attr("y", barHeight - 2)
       .attr("font-size", 11)
       .text(d.short);
 
     const total = d.total;
     const baseX = labelWidth;
-    svg
+    group
       .append("rect")
       .attr("x", baseX)
-      .attr("y", y)
+      .attr("y", 0)
       .attr("width", chartWidth)
       .attr("height", barHeight)
       .attr("fill", "#f1ede4");
@@ -411,10 +495,10 @@ function renderPerClass() {
       }
       const baseColor = seg.type === "correct" ? colors.correct : colorScale(seg.predIndex);
       const fill = seg.type === "correct" ? baseColor : lighten(baseColor);
-      svg
+      group
         .append("rect")
         .attr("x", cursor)
-        .attr("y", y)
+        .attr("y", 0)
         .attr("width", w)
         .attr("height", barHeight)
         .attr("fill", fill)
@@ -432,13 +516,17 @@ function renderPerClass() {
       cursor += w;
     });
 
-    svg
+    group
       .append("text")
       .attr("x", labelWidth + chartWidth + 8)
-      .attr("y", y + barHeight - 2)
+      .attr("y", barHeight - 2)
       .attr("font-size", 11)
       .attr("fill", colors.train)
       .text(`${(d.acc * 100).toFixed(1)}%`);
+  });
+  updatePerClassSummary();
+  requestAnimationFrame(() => {
+    window.scrollTo(scrollX, scrollY);
   });
 }
 
@@ -860,10 +948,29 @@ function initGraphFilter() {
   }
 }
 
+function initSelectionControls() {
+  if (elements.selectAll) {
+    elements.selectAll.addEventListener("click", () => {
+      setSelection(state.classData.map((d) => d.index));
+    });
+  }
+  if (elements.clearSelection) {
+    elements.clearSelection.addEventListener("click", () => {
+      setSelection([]);
+    });
+  }
+  if (elements.selectVisible) {
+    elements.selectVisible.addEventListener("click", () => {
+      setSelection(filteredClasses().map((d) => d.index));
+    });
+  }
+}
+
 window.addEventListener("DOMContentLoaded", () => {
   initTabs();
   initRunMenu();
   initFilter();
   initGraphFilter();
+  initSelectionControls();
   loadRuns();
 });

@@ -1,5 +1,7 @@
 [
   "conv_max_256_final",
   "conv_max_512_final",
-  "conv_max_512_final_augmented"
+  "conv_max_1024_final",
+  "conv_max_512_from_1024_sd",
+  "conv_max_256_from_1024_sd"
 ]

@@ -109,6 +109,28 @@
             <span class="panel-meta" id="per-class-meta">loading</span>
           </div>
           <div id="per-class-chart" class="chart-surface"></div>
+          <div class="summary-panel">
+            <div class="summary-stats">
+              <div class="summary-item">
+                <div class="summary-label">All classes avg</div>
+                <div id="avg-all" class="summary-value">-</div>
+                <div id="avg-all-count" class="summary-sub">0 classes</div>
+              </div>
+              <div class="summary-item">
+                <div class="summary-label">Selected avg</div>
+                <div id="avg-selected" class="summary-value">-</div>
+                <div id="selected-count" class="summary-sub">0 selected</div>
+              </div>
+            </div>
+            <div class="summary-actions">
+              <span class="summary-note">Click a bar to toggle selection.</span>
+              <div class="summary-buttons">
+                <button id="select-visible" type="button">Select visible</button>
+                <button id="select-all" type="button">Select all</button>
+                <button id="clear-selection" type="button">Clear</button>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
