@@ -104,12 +104,10 @@ function updatePanels() {
   if (wide) {
     panelBase.classList.remove("hidden");
     panelHier.classList.remove("hidden");
-    requestAnimationFrame(fitLabels);
     return;
   }
   panelBase.classList.toggle("hidden", activePanel !== "base");
   panelHier.classList.toggle("hidden", activePanel !== "hier");
-  requestAnimationFrame(fitLabels);
 }
 
 function updateGroupToggle() {
@@ -168,6 +166,8 @@ function makeInputTensor(canvas) {
   return tf.tensor4d(input, [1, height, width, 3], "float32");
 }
 
+const MAX_LABEL_LEN = 28;
+
 function shortenLabel(name, mode) {
   const firstIdx = name.indexOf("__");
   if (firstIdx === -1) return name;
@@ -178,18 +178,11 @@ function shortenLabel(name, mode) {
   return firstLetter + name.slice(secondIdx);
 }
 
-function fitLabel(labelEl) {
-  const full = labelEl.dataset.full || labelEl.textContent;
-  labelEl.textContent = full;
-  if (labelEl.clientWidth === 0) return;
-  if (labelEl.scrollWidth <= labelEl.clientWidth) return;
-  labelEl.textContent = shortenLabel(full, 1);
-  if (labelEl.scrollWidth <= labelEl.clientWidth) return;
-  labelEl.textContent = shortenLabel(full, 2);
-}
-
-function fitLabels() {
-  document.querySelectorAll("[data-full]").forEach(fitLabel);
+function shortenIfNeeded(name) {
+  let out = name;
+  if (out.length > MAX_LABEL_LEN) out = shortenLabel(out, 1);
+  if (out.length > MAX_LABEL_LEN) out = shortenLabel(out, 2);
+  return out;
 }
 
 function formatPct(value, digits = 2) {
@@ -198,10 +191,13 @@ function formatPct(value, digits = 2) {
 
 function makeLabelSpan(name) {
   const label = document.createElement("span");
-  label.className = "truncate";
-  label.textContent = name;
-  label.dataset.full = name;
+  label.className = "block min-w-0 flex-1";
+  label.textContent = shortenIfNeeded(name);
   label.title = name;
+  label.style.overflow = "hidden";
+  label.style.textOverflow = "ellipsis";
+  label.style.whiteSpace = "nowrap";
+  label.style.flex = "1 1 0%";
   return label;
 }
 
@@ -219,13 +215,14 @@ function renderList(listEl, items) {
   listEl.innerHTML = "";
   items.forEach((item) => {
     const li = document.createElement("li");
-    li.className = "rounded-lg border border-slate-200 bg-white/70 px-3 py-2";
+    li.className =
+      "rounded-lg border border-slate-200 bg-white/70 px-3 py-2 overflow-hidden";
 
     const row = document.createElement("div");
-    row.className = "flex items-center justify-between gap-3";
+    row.className = "flex w-full min-w-0 items-center gap-3";
     const label = makeLabelSpan(item.name);
     const prob = document.createElement("span");
-    prob.className = "text-xs font-semibold text-slate-600";
+    prob.className = "shrink-0 text-xs font-semibold text-slate-600";
     prob.textContent = formatPct(item.prob);
     row.append(label, prob);
     li.appendChild(row);
@@ -236,10 +233,10 @@ function renderList(listEl, items) {
         "mt-2 space-y-1 border-l border-slate-200 pl-3 text-xs text-slate-600";
       item.children.forEach((child) => {
         const subLi = document.createElement("li");
-        subLi.className = "flex items-center justify-between gap-2";
+        subLi.className = "flex w-full min-w-0 items-center gap-2";
         const subLabel = makeLabelSpan(child.name);
         const subProb = document.createElement("span");
-        subProb.className = "text-[11px] font-semibold text-slate-500";
+        subProb.className = "shrink-0 text-[11px] font-semibold text-slate-500";
         subProb.textContent = `${formatPct(child.overall)} (${formatPct(
           child.prob,
           1
@@ -252,7 +249,6 @@ function renderList(listEl, items) {
 
     listEl.appendChild(li);
   });
-  requestAnimationFrame(fitLabels);
 }
 
 async function loadJson(url) {
